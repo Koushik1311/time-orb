@@ -75,8 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInAnonymously = async () => {
-    const { error, data } = await supabase.auth.signInAnonymously();
-    console.log("SIGNINANONYMOUSLY:", data, error);
+    await supabase.auth.signInAnonymously();
   };
 
   const signIn = async (email: string, password: string) => {
