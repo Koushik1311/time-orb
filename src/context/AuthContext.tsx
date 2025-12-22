@@ -2,10 +2,20 @@ import { supabase } from "@/utils/supabase";
 import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 
+type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  onboarded: boolean;
+};
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;
+  profile: Profile | null;
   loading: boolean;
+  signInAnonymously: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -16,19 +26,46 @@ const AuthContext = createContext<AuthContextType>(null!);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from("profile")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    setProfile(data);
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+
       setSession(data.session);
       setUser(data.session?.user ?? null);
+
+      if (data.session?.user) {
+        await fetchProfile(data.session.user.id);
+      }
+
       setLoading(false);
-    });
+    };
+
+    init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
+        console.log("AUTH EVENT:", _event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
+
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
       },
     );
 
@@ -36,6 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  const signInAnonymously = async () => {
+    const { error, data } = await supabase.auth.signInAnonymously();
+    console.log("SIGNINANONYMOUSLY:", data, error);
+  };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -59,7 +101,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, loading, signIn, signUp, signOut }}
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        signInAnonymously,
+        signIn,
+        signUp,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>
