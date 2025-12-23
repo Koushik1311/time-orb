@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { AppGate } from "@/components/auth/AppGate";
 import { useRouter } from "expo-router";
 import { supabase } from "@/utils/supabase";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 function Home() {
   const { user } = useAuth();
@@ -53,7 +54,9 @@ function Home() {
 export default function Page() {
   return (
     <AppGate>
-      <Home />
+      <SafeAreaView>
+        <Home />
+      </SafeAreaView>
     </AppGate>
   );
 }
