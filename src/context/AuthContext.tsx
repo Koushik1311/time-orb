@@ -1,3 +1,4 @@
+import { getPushToken } from "@/lib/notifications";
 import { supabase } from "@/utils/supabase";
 import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -30,13 +31,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
-    setProfile(data);
+    if (!error) setProfile(data);
   };
 
   useEffect(() => {
@@ -57,15 +58,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log("AUTH EVENT:", _event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
+          const token = await getPushToken();
+
+          if (token) {
+            await supabase.from("user_push_tokens").upsert({
+              user_id: session.user.id,
+              token,
+            });
+          }
+
           await fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }
+
+        setLoading(false);
       },
     );
 
