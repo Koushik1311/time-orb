@@ -8,6 +8,9 @@
     },
     "plugins": ["expo-router"],
     "name": "time-orb",
-    "slug": "time-orb"
+    "slug": "time-orb",
+    "ios": {
+      "supportsTablet": true
+    }
   }
 }
